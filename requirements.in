@@ -1,0 +1,7 @@
+ortools
+fastapi
+uvicorn[standard]
+motor
+pydantic-settings
+python-dotenv
+pip-tools
