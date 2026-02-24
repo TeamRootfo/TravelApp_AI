@@ -5,3 +5,4 @@ motor
 pydantic-settings
 python-dotenv
 pip-tools
+openai

@@ -11,6 +11,7 @@ class LocationBase(BaseModel):
     visit_duration: int = Field(..., ge=0)
     description: str = Field(..., min_length=1)
     tags: List[str] = Field(default_factory=list)
+    embedding: Optional[List[float]] = None
 
 
 class LocationCreate(LocationBase):
@@ -25,6 +26,7 @@ class LocationUpdate(BaseModel):
     visit_duration: Optional[int] = Field(None, ge=0, le=1440)
     description: Optional[str] = None
     tags: Optional[List[str]] = None
+    embedding: Optional[List[float]] = None
 
 class LocationOut(LocationBase):
     id: str
