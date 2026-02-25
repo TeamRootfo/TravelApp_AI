@@ -2,10 +2,16 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 
 
+class GeoPoint(BaseModel):
+    type: str = Field(default="Point")
+    coordinates: List[float]  # [longitude, latitude]
+
+
 class LocationBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     latitude: float
     longitude: float
+    location: Optional[GeoPoint] = None
     open_time: int = Field(..., ge=0, le=1440)
     close_time: int = Field(..., ge=0, le=1440)
     visit_duration: int = Field(..., ge=0)
@@ -16,6 +22,7 @@ class LocationBase(BaseModel):
 
 class LocationCreate(LocationBase):
     pass
+
 
 class LocationUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
@@ -28,8 +35,8 @@ class LocationUpdate(BaseModel):
     tags: Optional[List[str]] = None
     embedding: Optional[List[float]] = None
 
+
 class LocationOut(LocationBase):
     id: str
     is_deleted: bool = Field(default=False)
     deleted_at: Optional[str] = None
-
