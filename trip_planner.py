@@ -11,7 +11,10 @@ def haversine(lat1, lon1, lat2, lon2):
     dlat = radians(lat2 - lat1)
     dlon = radians(lon2 - lon1)
 
-    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    a = (
+        sin(dlat / 2) ** 2
+        + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    )
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return R * c
 
@@ -22,7 +25,9 @@ def fmt_hhmm(minutes_in_day: int) -> str:
     return f"{h:02d}:{m:02d}"
 
 
-def create_time_matrix(locations, speed_kmph=30, road_factor=1.25, flexible_end_index=None):
+def create_time_matrix(
+    locations, speed_kmph=30, road_factor=1.25, flexible_end_index=None
+):
     """
     Travel time matrix in minutes.
     - Rounds and enforces minimum 1 minute (except i==j).
@@ -39,8 +44,10 @@ def create_time_matrix(locations, speed_kmph=30, road_factor=1.25, flexible_end_
                 continue
 
             dist_km = haversine(
-                locations[i]["latitude"], locations[i]["longitude"],
-                locations[j]["latitude"], locations[j]["longitude"],
+                locations[i]["latitude"],
+                locations[i]["longitude"],
+                locations[j]["latitude"],
+                locations[j]["longitude"],
             )
             minutes = (dist_km * road_factor / speed_kmph) * 60.0
             matrix[i][j] = max(1, int(round(minutes)))
@@ -69,7 +76,7 @@ def solve_one_day(
     minimize_travel_weight=1,
     time_limit_seconds=5,
     flexible_end_index=None,
-    max_stops_per_day=None,   # <-- NEW
+    max_stops_per_day=None,  # <-- NEW
 ):
     """
     Single-day solver:
@@ -152,16 +159,20 @@ def solve_one_day(
         stop_cb_idx = routing.RegisterTransitCallback(stop_count_cb)
         routing.AddDimension(
             stop_cb_idx,
-            0,                   # no slack
+            0,  # no slack
             int(max_stops_per_day),
-            True,                # start cumul = 0
+            True,  # start cumul = 0
             "Stops",
         )
 
     # Search
     params = pywrapcp.DefaultRoutingSearchParameters()
-    params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-    params.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+    params.first_solution_strategy = (
+        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+    )
+    params.local_search_metaheuristic = (
+        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+    )
     params.time_limit.seconds = int(time_limit_seconds)
 
     sol = routing.SolveWithParameters(params)
@@ -210,7 +221,7 @@ def solve_one_day(
 # --------------------------
 # Multi-day (carry start forward + final End only last day) + max stops/day
 # --------------------------
-def plan_trip_multi_day_carry_end_forward(
+def plan_trip_multi_day(
     all_locations,
     start_original_index,
     end_original_index,
@@ -223,10 +234,11 @@ def plan_trip_multi_day_carry_end_forward(
     score_to_minutes=2,
     minimize_travel_weight=1,
     time_limit_seconds=5,
-    max_stops_per_day=6,   # <-- NEW
+    max_stops_per_day=6,  # <-- NEW
 ):
     remaining_original = [
-        i for i in range(len(all_locations))
+        i
+        for i in range(len(all_locations))
         if i not in (start_original_index, end_original_index)
     ]
 
@@ -269,7 +281,7 @@ def plan_trip_multi_day_carry_end_forward(
         }
 
     for day in range(1, trip_days + 1):
-        is_last_day = (day == trip_days)
+        is_last_day = day == trip_days
 
         # If nothing left to visit, stop early.
         # If not last day, we still add one FINAL day to reach End, then break.
@@ -297,7 +309,9 @@ def plan_trip_multi_day_carry_end_forward(
                 "visit_duration": 0,
                 "score": 0,
             }
-            day_locations = [deepcopy(all_locations[i]) for i in day_original_indices] + [eod_node]
+            day_locations = [
+                deepcopy(all_locations[i]) for i in day_original_indices
+            ] + [eod_node]
             day_end_index = len(day_locations) - 1
             flexible_end_index = day_end_index
 
@@ -349,15 +363,17 @@ def plan_trip_multi_day_carry_end_forward(
         else:
             next_start_original = current_start_original
 
-        day_plans.append({
-            "day": day,
-            "is_last_day": is_last_day,
-            "result": res,
-            "day_original_indices": day_original_indices,
-            "start_original": current_start_original,
-            "next_start_original": next_start_original,
-            "visited_original": visited_original,
-        })
+        day_plans.append(
+            {
+                "day": day,
+                "is_last_day": is_last_day,
+                "result": res,
+                "day_original_indices": day_original_indices,
+                "start_original": current_start_original,
+                "next_start_original": next_start_original,
+                "visited_original": visited_original,
+            }
+        )
 
         current_start_original = next_start_original
 
@@ -371,10 +387,16 @@ def plan_trip_multi_day_carry_end_forward(
     print(f"Max stops/day: {max_stops_per_day}\n")
 
     print(f"Start time each day: {fmt_hhmm(start_time_minutes)}")
-    print(f"Daily budget: {daily_time_budget_minutes} min ({daily_time_budget_minutes/60:.1f} hrs)")
+    print(
+        f"Daily budget: {daily_time_budget_minutes} min ({daily_time_budget_minutes/60:.1f} hrs)"
+    )
     print(f"Days planned: {trip_days}")
-    print(f"Speed: {speed_kmph} km/h | road_factor={road_factor} | Wait allowed: {max_wait_time} min")
-    print(f"Objective: maximize score vs travel (score_to_minutes={score_to_minutes}, travel_weight={minimize_travel_weight})")
+    print(
+        f"Speed: {speed_kmph} km/h | road_factor={road_factor} | Wait allowed: {max_wait_time} min"
+    )
+    print(
+        f"Objective: maximize score vs travel (score_to_minutes={score_to_minutes}, travel_weight={minimize_travel_weight})"
+    )
 
     for dp in day_plans:
         day = dp["day"]
@@ -402,14 +424,22 @@ def plan_trip_multi_day_carry_end_forward(
 
         end_time = arrival[-1]
         if dp.get("is_last_day", False) and day != "FINAL":
-            print(f"End at (FINAL): {all_locations[end_original_index]['name']} at {fmt_hhmm(end_time)} ({end_time} min)")
+            print(
+                f"End at (FINAL): {all_locations[end_original_index]['name']} at {fmt_hhmm(end_time)} ({end_time} min)"
+            )
         elif day == "FINAL":
-            print(f"End at (FINAL): {all_locations[end_original_index]['name']} at {fmt_hhmm(end_time)} ({end_time} min)")
+            print(
+                f"End at (FINAL): {all_locations[end_original_index]['name']} at {fmt_hhmm(end_time)} ({end_time} min)"
+            )
         else:
             last_real_node = route_nodes[-2]
             last_real_orig = mapping[last_real_node]
-            print(f"End-of-day at: {all_locations[last_real_orig]['name']} at {fmt_hhmm(end_time)} ({end_time} min)")
-            print(f"Next day starts at: {all_locations[dp['next_start_original']]['name']}")
+            print(
+                f"End-of-day at: {all_locations[last_real_orig]['name']} at {fmt_hhmm(end_time)} ({end_time} min)"
+            )
+            print(
+                f"Next day starts at: {all_locations[dp['next_start_original']]['name']}"
+            )
 
         print(f"Day score collected: {res['total_score']}")
         print(f"Day elapsed: {end_time - start_time_minutes} min")
@@ -419,7 +449,9 @@ def plan_trip_multi_day_carry_end_forward(
     if remaining_original:
         print("\nUnvisited places after planning:")
         for i in remaining_original:
-            print(f" - {all_locations[i]['name']} (score={all_locations[i].get('score', 0)})")
+            print(
+                f" - {all_locations[i]['name']} (score={all_locations[i].get('score', 0)})"
+            )
     else:
         print("\nAll places visited (within constraints).")
 
@@ -429,24 +461,126 @@ def plan_trip_multi_day_carry_end_forward(
 # --------------------------
 if __name__ == "__main__":
     locations = [
-        {"name": "Start", "latitude": 6.9271, "longitude": 79.8612, "open_time": 0, "close_time": 1440, "visit_duration": 0, "score": 0},
-
-        {"name": "Temple A", "latitude": 6.9200, "longitude": 79.8700, "open_time": 540, "close_time": 1020, "visit_duration": 60, "score": 100},
-        {"name": "Museum B", "latitude": 6.9100, "longitude": 79.8800, "open_time": 600, "close_time": 1200, "visit_duration": 45, "score": 80},
-        {"name": "National Library", "latitude": 6.9210, "longitude": 79.8670, "open_time": 540, "close_time": 1080, "visit_duration": 30, "score": 70},
-        {"name": "Galle Face Green", "latitude": 6.9270, "longitude": 79.8428, "open_time": 0, "close_time": 1440, "visit_duration": 30, "score": 60},
-        {"name": "Independence Square", "latitude": 6.9036, "longitude": 79.8693, "open_time": 480, "close_time": 1080, "visit_duration": 40, "score": 75},
-        {"name": "Old Parliament", "latitude": 6.9335, "longitude": 79.8486, "open_time": 540, "close_time": 1020, "visit_duration": 35, "score": 65},
-        {"name": "Beira Lake", "latitude": 6.9279, "longitude": 79.8559, "open_time": 480, "close_time": 1200, "visit_duration": 50, "score": 85},
-        {"name": "Pettah Market", "latitude": 6.9352, "longitude": 79.8501, "open_time": 480, "close_time": 1140, "visit_duration": 45, "score": 90},
-        {"name": "Kelaniya Temple", "latitude": 6.9490, "longitude": 79.9187, "open_time": 480, "close_time": 1080, "visit_duration": 60, "score": 95},
-        {"name": "Negombo Beach", "latitude": 7.2086, "longitude": 79.8358, "open_time": 480, "close_time": 1200, "visit_duration": 90, "score": 90},
-        {"name": "Gangaramaya Temple", "latitude": 6.9167, "longitude": 79.8562, "open_time": 540, "close_time": 1080, "visit_duration": 50, "score": 85},
-
-        {"name": "End", "latitude": 7.2080, "longitude": 79.8350, "open_time": 0, "close_time": 1440, "visit_duration": 0, "score": 0},
+        {
+            "name": "Start",
+            "latitude": 6.9271,
+            "longitude": 79.8612,
+            "open_time": 0,
+            "close_time": 1440,
+            "visit_duration": 0,
+            "score": 0,
+        },
+        {
+            "name": "Temple A",
+            "latitude": 6.9200,
+            "longitude": 79.8700,
+            "open_time": 540,
+            "close_time": 1020,
+            "visit_duration": 60,
+            "score": 100,
+        },
+        {
+            "name": "Museum B",
+            "latitude": 6.9100,
+            "longitude": 79.8800,
+            "open_time": 600,
+            "close_time": 1200,
+            "visit_duration": 45,
+            "score": 80,
+        },
+        {
+            "name": "National Library",
+            "latitude": 6.9210,
+            "longitude": 79.8670,
+            "open_time": 540,
+            "close_time": 1080,
+            "visit_duration": 30,
+            "score": 70,
+        },
+        {
+            "name": "Galle Face Green",
+            "latitude": 6.9270,
+            "longitude": 79.8428,
+            "open_time": 0,
+            "close_time": 1440,
+            "visit_duration": 30,
+            "score": 60,
+        },
+        {
+            "name": "Independence Square",
+            "latitude": 6.9036,
+            "longitude": 79.8693,
+            "open_time": 480,
+            "close_time": 1080,
+            "visit_duration": 40,
+            "score": 75,
+        },
+        {
+            "name": "Old Parliament",
+            "latitude": 6.9335,
+            "longitude": 79.8486,
+            "open_time": 540,
+            "close_time": 1020,
+            "visit_duration": 35,
+            "score": 65,
+        },
+        {
+            "name": "Beira Lake",
+            "latitude": 6.9279,
+            "longitude": 79.8559,
+            "open_time": 480,
+            "close_time": 1200,
+            "visit_duration": 50,
+            "score": 85,
+        },
+        {
+            "name": "Pettah Market",
+            "latitude": 6.9352,
+            "longitude": 79.8501,
+            "open_time": 480,
+            "close_time": 1140,
+            "visit_duration": 45,
+            "score": 90,
+        },
+        {
+            "name": "Kelaniya Temple",
+            "latitude": 6.9490,
+            "longitude": 79.9187,
+            "open_time": 480,
+            "close_time": 1080,
+            "visit_duration": 60,
+            "score": 95,
+        },
+        {
+            "name": "Negombo Beach",
+            "latitude": 7.2086,
+            "longitude": 79.8358,
+            "open_time": 480,
+            "close_time": 1200,
+            "visit_duration": 90,
+            "score": 90,
+        },
+        {
+            "name": "Gangaramaya Temple",
+            "latitude": 6.9167,
+            "longitude": 79.8562,
+            "open_time": 540,
+            "close_time": 1080,
+            "visit_duration": 50,
+            "score": 85,
+        },
+        {
+            "name": "End",
+            "latitude": 7.2080,
+            "longitude": 79.8350,
+            "open_time": 0,
+            "close_time": 1440,
+            "visit_duration": 0,
+            "score": 0,
+        },
     ]
 
-    plan_trip_multi_day_carry_end_forward(
+    plan_trip_multi_day(
         all_locations=locations,
         start_original_index=0,
         end_original_index=len(locations) - 1,
@@ -459,5 +593,5 @@ if __name__ == "__main__":
         score_to_minutes=2,
         minimize_travel_weight=1,
         time_limit_seconds=5,
-        max_stops_per_day=3,   # <--- set this!
+        max_stops_per_day=3,  # <--- set this!
     )

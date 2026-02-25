@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.models.planner import PlannerRequest
-from app.services.planner.multi_day import plan_trip_multi_day_carry_end_forward
+from app.services.planner.multi_day import plan_trip_multi_day
 from typing import List
 
 router = APIRouter(prefix="/planner", tags=["planner"])
@@ -129,7 +129,7 @@ async def plan_trip():
         },
     ]
     try:
-        result = plan_trip_multi_day_carry_end_forward(
+        result = plan_trip_multi_day(
             all_locations=locations,
             start_original_index=0,
             end_original_index=len(locations) - 1,

@@ -1,7 +1,8 @@
 from copy import deepcopy
 from .solver import solve_one_day
 
-def plan_trip_multi_day_carry_end_forward(
+
+def plan_trip_multi_day(
     all_locations,
     start_original_index,
     end_original_index,
@@ -17,7 +18,8 @@ def plan_trip_multi_day_carry_end_forward(
     max_stops_per_day=6,
 ):
     remaining_original = [
-        i for i in range(len(all_locations))
+        i
+        for i in range(len(all_locations))
         if i not in (start_original_index, end_original_index)
     ]
 
@@ -25,7 +27,14 @@ def plan_trip_multi_day_carry_end_forward(
     day_results = []
     total_score = 0
 
-    def build_day_output(day_label, is_last_day, res, day_original_indices, start_original, next_start_original=None):
+    def build_day_output(
+        day_label,
+        is_last_day,
+        res,
+        day_original_indices,
+        start_original,
+        next_start_original=None,
+    ):
         """
         Convert OR-Tools result to API-friendly JSON.
         """
@@ -39,17 +48,19 @@ def plan_trip_multi_day_carry_end_forward(
         for i, day_node in enumerate(route_nodes[:-1]):
             orig_idx = mapping[day_node]
             loc = all_locations[orig_idx]
-            stops.append({
-                "order": i,
-                "original_index": orig_idx,
-                "name": loc.get("name"),
-                "latitude": loc.get("latitude"),
-                "longitude": loc.get("longitude"),
-                "arrival_time_minutes": arrival_times[i],
-                "visit_duration": loc.get("visit_duration", 0),
-                "score": loc.get("score", 0),
-                "travel_to_next_minutes": travel_to_next[i],
-            })
+            stops.append(
+                {
+                    "order": i,
+                    "original_index": orig_idx,
+                    "name": loc.get("name"),
+                    "latitude": loc.get("latitude"),
+                    "longitude": loc.get("longitude"),
+                    "arrival_time_minutes": arrival_times[i],
+                    "visit_duration": loc.get("visit_duration", 0),
+                    "score": loc.get("score", 0),
+                    "travel_to_next_minutes": travel_to_next[i],
+                }
+            )
 
         # Final arrival time at depot (EOD or real End)
         end_time = arrival_times[-1]
@@ -68,7 +79,15 @@ def plan_trip_multi_day_carry_end_forward(
             "next_start_original_index": next_start_original,
             "total_score_day": res["total_score"],
             "end_time_minutes": end_time,
-            "end_name": all_locations[end_original_index].get("name") if is_last_day else (all_locations[next_start_original].get("name") if next_start_original is not None else None),
+            "end_name": (
+                all_locations[end_original_index].get("name")
+                if is_last_day
+                else (
+                    all_locations[next_start_original].get("name")
+                    if next_start_original is not None
+                    else None
+                )
+            ),
             "visited_original_indices": visited_original,
             "stops": stops,
         }
@@ -112,7 +131,7 @@ def plan_trip_multi_day_carry_end_forward(
         )
 
     for day in range(1, trip_days + 1):
-        is_last_day = (day == trip_days)
+        is_last_day = day == trip_days
 
         # If nothing left to visit, stop early.
         # If not last day, still go to End on a final day.
@@ -141,7 +160,9 @@ def plan_trip_multi_day_carry_end_forward(
                 "visit_duration": 0,
                 "score": 0,
             }
-            day_locations = [deepcopy(all_locations[i]) for i in day_original_indices] + [eod_node]
+            day_locations = [
+                deepcopy(all_locations[i]) for i in day_original_indices
+            ] + [eod_node]
             day_end_index = len(day_locations) - 1
             flexible_end_index = day_end_index
 
@@ -168,11 +189,13 @@ def plan_trip_multi_day_carry_end_forward(
         )
 
         if res is None:
-            day_results.append({
-                "day": day,
-                "is_last_day": is_last_day,
-                "error": "No solution",
-            })
+            day_results.append(
+                {
+                    "day": day,
+                    "is_last_day": is_last_day,
+                    "error": "No solution",
+                }
+            )
             continue
 
         total_score += res["total_score"]
@@ -198,7 +221,11 @@ def plan_trip_multi_day_carry_end_forward(
                 day_label=day,
                 is_last_day=is_last_day,
                 res=res,
-                day_original_indices=day_original_indices if is_last_day else (day_original_indices + [None]),  # placeholder for EOD mapping slot
+                day_original_indices=(
+                    day_original_indices
+                    if is_last_day
+                    else (day_original_indices + [None])
+                ),  # placeholder for EOD mapping slot
                 start_original=current_start_original,
                 next_start_original=None if is_last_day else next_start_original,
             )

@@ -7,3 +7,4 @@ python-dotenv
 pip-tools
 openai
 pytest
+elevenlabs

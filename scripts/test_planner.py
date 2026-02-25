@@ -1,4 +1,4 @@
-from app.services.planner.multi_day import plan_trip_multi_day_carry_end_forward
+from app.services.planner.multi_day import plan_trip_multi_day
 
 
 def main():
@@ -122,7 +122,7 @@ def main():
         },
     ]
 
-    res = plan_trip_multi_day_carry_end_forward(
+    res = plan_trip_multi_day(
         all_locations=locations,
         start_original_index=0,
         end_original_index=2,
