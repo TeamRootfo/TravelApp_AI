@@ -7,6 +7,7 @@ app = FastAPI()
 app.include_router(locations_router, prefix="/api/v1")
 
 
+
 @app.on_event("startup")
 async def startup():
     await connect_to_mongo()
