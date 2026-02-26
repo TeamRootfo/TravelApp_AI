@@ -8,3 +8,5 @@ pip-tools
 openai
 pytest
 elevenlabs
+langchain-openai
+langchain-openai

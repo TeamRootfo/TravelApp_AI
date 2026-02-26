@@ -12,6 +12,12 @@ class LocationRepository:
         doc["id"] = str(doc["_id"])
         doc.pop("_id", None)
         return doc
+    
+    async def get_all_tags(self) -> list[str]:
+        tags = await self.collection.distinct("tags", {"is_deleted": {"$ne": True}})
+        # normalize (optional)
+        tags = sorted({t.strip().lower() for t in tags if isinstance(t, str) and t.strip()})
+        return tags
 
     async def create(self, data: dict) -> str:
         # soft delete defaults

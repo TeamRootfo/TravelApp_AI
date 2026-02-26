@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from app.models.planner import TagSuggestRequest
 from app.repositories.location_repo import LocationRepository
 from app.models.location import LocationCreate, LocationNearbyOut, LocationUpdate, LocationOut
 from app.deps.database import get_location_collection
+from app.services.tagging import suggest_tags_from_description
 
 router = APIRouter(prefix="/locations", tags=["locations"])
 
@@ -164,6 +166,23 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
 
     return {"inserted_ids": inserted_ids}
 
+
+@router.post("/tags/suggest", response_model=dict)
+async def suggest_tags(
+    payload: TagSuggestRequest,
+    repo: LocationRepository = Depends(get_repo),
+):
+    allowed_tags = await repo.get_all_tags()
+    try:
+            
+        tags = await suggest_tags_from_description(
+            description=payload.description,
+            allowed_tags=allowed_tags,
+        )
+        return {"tags": tags}
+    except Exception as e:
+        print(f"Error suggesting tags: {e}")
+        raise HTTPException(status_code=500, detail="Failed to suggest tags")
 
 @router.get("/", response_model=list[LocationOut])
 async def list_locations(

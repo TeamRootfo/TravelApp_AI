@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 
 
@@ -11,4 +11,6 @@ class PlannerRequest(BaseModel):
     visit_duration: int
     score: int
     start_index: int
-    
+
+class TagSuggestRequest(BaseModel):
+    description: str = Field(..., min_length=5)
