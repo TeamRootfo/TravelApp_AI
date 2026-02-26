@@ -1,6 +1,7 @@
 from bson import ObjectId
 from datetime import datetime, timezone
 from app.services.embeddings import embed_text
+from motor.motor_asyncio import AsyncIOMotorCollection
 
 
 class LocationRepository:
@@ -59,12 +60,7 @@ class LocationRepository:
             data["embedding"] = await embed_text(data["description"])
 
         if "latitude" in data or "longitude" in data:
-            # We need both to update the point, or we fetch from DB
-            # For simplicity, if either is provided, we expect both or we'd need to fetch
-            # But in typical Pydantic update, they might be partial.
-            # Let's check if both are in data. If not, we might need current values.
-            # To be safe, if either is updated, we should probably ensure the point is updated.
-            # Let's fetch the current doc if only one is provided.
+
             if "latitude" not in data or "longitude" not in data:
                 current = await self.collection.find_one({"_id": ObjectId(location_id)})
                 if current:
@@ -95,3 +91,41 @@ class LocationRepository:
             {"$set": {"is_deleted": True, "deleted_at": now}},
         )
         return result.matched_count > 0
+
+    async def nearby(
+        self,
+        latitude: float,
+        longitude: float,
+        max_distance_m: int = 1000,
+        limit: int = 20,
+        
+    ) -> list[dict]:
+        query = {
+            "is_deleted": {"$ne": True},
+            "location": {
+                "$near": {
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": [longitude, latitude],  # IMPORTANT ORDER
+                    },
+                    "$maxDistance": max_distance_m,
+                }
+            },
+        }
+
+        # Only return name and description fields
+        projection = {"name": 1, "latitude": 1, "longitude": 1, "_id": 0}
+
+        try:
+            docs = []
+            async for d in self.collection.find(query, projection).limit(limit):
+                docs.append({
+                    "name": d.get("name"),
+                    "latitude": d.get("latitude"),
+                    "longitude": d.get("longitude"),
+                })
+
+            return docs
+        except Exception as e:
+            print(f"Error in nearby query: {e}")
+            return []

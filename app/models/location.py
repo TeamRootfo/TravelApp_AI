@@ -40,3 +40,10 @@ class LocationOut(LocationBase):
     id: str
     is_deleted: bool = Field(default=False)
     deleted_at: Optional[str] = None
+
+
+
+class LocationNearbyOut(BaseModel):
+    name: str
+    latitude: float
+    longitude: float

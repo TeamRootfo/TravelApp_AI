@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.repositories.location_repo import LocationRepository
-from app.models.location import LocationCreate, LocationUpdate, LocationOut
+from app.models.location import LocationCreate, LocationNearbyOut, LocationUpdate, LocationOut
 from app.deps.database import get_location_collection
 
 router = APIRouter(prefix="/locations", tags=["locations"])
@@ -173,7 +173,23 @@ async def list_locations(
 ):
     return await repo.list_all(limit=limit, include_deleted=include_deleted)
 
-
+@router.get("/nearby", response_model=list[LocationNearbyOut])
+async def get_nearby_locations(
+    latitude: float = Query(..., ge=-90, le=90),
+    longitude: float = Query(..., ge=-180, le=180),
+    max_distance_m: int = Query(5000, ge=1, le=200000),
+    limit: int = Query(20, ge=1, le=100),
+    repo: LocationRepository = Depends(get_repo),
+    
+):
+    print(f"Received nearby request: lat={latitude}, lon={longitude}, max_distance_m={max_distance_m}, limit={limit}")
+    return await repo.nearby(
+        latitude=latitude,
+        longitude=longitude,
+        max_distance_m=max_distance_m,
+        limit=limit
+    )
+    
 @router.get("/{location_id}", response_model=LocationOut)
 async def get_location(
     location_id: str,
@@ -198,6 +214,7 @@ async def update_location(
     return {"updated": True}
 
 
+
 @router.delete("/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_location(
     location_id: str,
@@ -207,3 +224,4 @@ async def delete_location(
     if not ok:
         raise HTTPException(status_code=404, detail="Location not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
