@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 
+from app.models.intent import IntentNearbyRequest, MatchOut
 from app.models.planner import TagSuggestRequest
 from app.repositories.location_repo import LocationRepository
 from app.models.location import LocationCreate, LocationNearbyOut, LocationUpdate, LocationOut
 from app.deps.database import get_location_collection
+from app.services.geocode import geocode_area
+from app.services.intent_ranker import rank_locations
 from app.services.tagging import suggest_tags_from_description
 
 router = APIRouter(prefix="/locations", tags=["locations"])
@@ -191,6 +194,43 @@ async def list_locations(
     repo: LocationRepository = Depends(get_repo),
 ):
     return await repo.list_all(limit=limit, include_deleted=include_deleted)
+
+
+@router.post("/intent/nearby-match", response_model=list[MatchOut])
+async def intent_nearby_match(
+    payload: IntentNearbyRequest = Body(...),
+    repo: LocationRepository = Depends(get_repo),
+):
+    # 1) geocode area -> lat/lon
+    geo = await geocode_area(payload.area)
+    if not geo:
+        raise HTTPException(status_code=400, detail="Could not geocode the provided area")
+    lat, lon = geo
+
+    # 2) fetch nearby candidates
+    candidates = await repo.nearby(
+        latitude=lat,
+        longitude=lon,
+        max_distance_m=payload.radius_m,
+        limit=200,  # candidate pool
+    )
+
+    if not candidates:
+        return []
+
+    
+    allowed_tags = await repo.get_all_tags()
+
+    ranked = await rank_locations(
+        intention=payload.intention,
+        allowed_tags=allowed_tags,
+        candidates=candidates,
+        weight_embedding=0.8,
+        weight_tags=0.2,
+        top_k=payload.limit,
+    )
+
+    return ranked
 
 @router.get("/nearby", response_model=list[LocationNearbyOut])
 async def get_nearby_locations(

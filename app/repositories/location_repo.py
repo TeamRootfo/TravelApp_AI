@@ -98,40 +98,64 @@ class LocationRepository:
         )
         return result.matched_count > 0
 
+    # async def nearby(
+    #     self,
+    #     latitude: float,
+    #     longitude: float,
+    #     max_distance_m: int = 1000,
+    #     limit: int = 20,
+        
+    # ) -> list[dict]:
+    #     query = {
+    #         "is_deleted": {"$ne": True},
+    #         "location": {
+    #             "$near": {
+    #                 "$geometry": {
+    #                     "type": "Point",
+    #                     "coordinates": [longitude, latitude],  # IMPORTANT ORDER
+    #                 },
+    #                 "$maxDistance": max_distance_m,
+    #             }
+    #         },
+    #     }
+
+    #     # Only return name and description fields
+    #     projection = {"name": 1, "latitude": 1, "longitude": 1, "_id": 0}
+
+    #     try:
+    #         docs = []
+    #         async for d in self.collection.find(query, projection).limit(limit):
+    #             docs.append({
+    #                 "name": d.get("name"),
+    #                 "latitude": d.get("latitude"),
+    #                 "longitude": d.get("longitude"),
+    #             })
+
+    #         return docs
+    #     except Exception as e:
+    #         print(f"Error in nearby query: {e}")
+    #         return []
+    
     async def nearby(
         self,
         latitude: float,
         longitude: float,
-        max_distance_m: int = 1000,
-        limit: int = 20,
-        
+        max_distance_m: int = 5000,
+        limit: int = 200,
+        include_deleted: bool = False,
     ) -> list[dict]:
         query = {
-            "is_deleted": {"$ne": True},
             "location": {
                 "$near": {
-                    "$geometry": {
-                        "type": "Point",
-                        "coordinates": [longitude, latitude],  # IMPORTANT ORDER
-                    },
+                    "$geometry": {"type": "Point", "coordinates": [longitude, latitude]},
                     "$maxDistance": max_distance_m,
                 }
-            },
+            }
         }
+        if not include_deleted:
+            query["is_deleted"] = {"$ne": True}
 
-        # Only return name and description fields
-        projection = {"name": 1, "latitude": 1, "longitude": 1, "_id": 0}
-
-        try:
-            docs = []
-            async for d in self.collection.find(query, projection).limit(limit):
-                docs.append({
-                    "name": d.get("name"),
-                    "latitude": d.get("latitude"),
-                    "longitude": d.get("longitude"),
-                })
-
-            return docs
-        except Exception as e:
-            print(f"Error in nearby query: {e}")
-            return []
+        docs = []
+        async for d in self.collection.find(query).limit(limit):
+            docs.append(self._to_out(d))
+        return docs

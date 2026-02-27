@@ -2,4 +2,6 @@ from pydantic import BaseModel
 
 
 class TTSRequest(BaseModel):
-    text: str
+    location_name: str
+    user_id: str = "user"
+    session_id: str = "default"

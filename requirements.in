@@ -10,3 +10,6 @@ pytest
 elevenlabs
 langchain-openai
 langchain-openai
+httpx
+google-adk
+litellm
