@@ -12,5 +12,6 @@ class PlannerRequest(BaseModel):
     score: int
     start_index: int
 
+
 class TagSuggestRequest(BaseModel):
     description: str = Field(..., min_length=5)

@@ -3,6 +3,8 @@ import math
 
 from app.services.embeddings import embed_text
 from app.services.tagging import suggest_tags_from_description
+from app.models.planner import PlannerRequest
+
 
 def cosine(a: List[float], b: List[float]) -> float:
     if not a or not b or len(a) != len(b):
@@ -18,9 +20,11 @@ def cosine(a: List[float], b: List[float]) -> float:
         return 0.0
     return dot / (math.sqrt(na) * math.sqrt(nb))
 
+
 def cosine_0_1(a: List[float], b: List[float]) -> float:
     # normalize cosine from [-1, 1] -> [0, 1]
     return (cosine(a, b) + 1.0) / 2.0
+
 
 def tag_overlap_score(intent_tags: List[str], place_tags: List[str]) -> float:
     it = [t.strip().lower() for t in (intent_tags or []) if t and t.strip()]
@@ -31,6 +35,7 @@ def tag_overlap_score(intent_tags: List[str], place_tags: List[str]) -> float:
     matched = sum(1 for t in it if t in pt)
     return matched / len(it)
 
+
 async def rank_locations(
     intention: str,
     allowed_tags: List[str],
@@ -39,10 +44,9 @@ async def rank_locations(
     weight_tags: float = 0.2,
     top_k: int = 10,
 ) -> List[Dict[str, Any]]:
-    # 1) intent embedding
+
     intent_vec = await embed_text(intention)
 
-    # 2) intent tags from allowed_tags only
     intent_tags = await suggest_tags_from_description(
         description=intention,
         allowed_tags=allowed_tags,
@@ -59,11 +63,16 @@ async def rank_locations(
 
         results.append(
             {
-                "id": loc.get("id"),
                 "name": loc.get("name"),
+                "latitude": loc.get("latitude"),
+                "longitude": loc.get("longitude"),
+                "open_time": loc.get("open_time"),
+                "close_time": loc.get("close_time"),
+                "visit_duration": loc.get("visit_duration"),
                 "score": float(final),
             }
         )
 
     results.sort(key=lambda x: x["score"], reverse=True)
+
     return results[:top_k]

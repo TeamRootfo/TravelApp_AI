@@ -1,9 +1,15 @@
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 
-from app.models.intent import IntentNearbyRequest, MatchOut
+from app.models.intent import IntentAutoAreaRequest, MatchOut
+from app.models.planner import PlannerRequest
 from app.models.planner import TagSuggestRequest
 from app.repositories.location_repo import LocationRepository
-from app.models.location import LocationCreate, LocationNearbyOut, LocationUpdate, LocationOut
+from app.models.location import (
+    LocationCreate,
+    LocationNearbyOut,
+    LocationUpdate,
+    LocationOut,
+)
 from app.deps.database import get_location_collection
 from app.services.geocode import geocode_area
 from app.services.intent_ranker import rank_locations
@@ -29,138 +35,225 @@ async def create_location(
 async def seed_locations(repo: LocationRepository = Depends(get_repo)):
     # Must include all required fields from LocationBase (description is required).
     locations = [
-
-    {
-        "name": "Start",
-        "latitude": 6.9271,
-        "longitude": 79.8612,
-        "open_time": 0,
-        "close_time": 1440,
-        "visit_duration": 0,
-        "description": "The vibrant heart of Colombo where your journey begins — surrounded by colonial architecture, busy streets, and the pulse of the city waking up.",
-        "tags": ["start", "city-center", "urban", "landmark", "orientation-point"],
-    },
-    {
-        "name": "Temple A",
-        "latitude": 6.9200,
-        "longitude": 79.8700,
-        "open_time": 540,
-        "close_time": 1020,
-        "visit_duration": 60,
-        "description": "A serene Buddhist temple adorned with intricate carvings and incense-filled halls. A peaceful retreat from the city’s rush, perfect for quiet reflection and cultural discovery.",
-        "tags": ["temple", "culture", "spiritual", "peaceful", "architecture", "heritage", "religious-site"],
-    },
-    {
-        "name": "Museum B",
-        "latitude": 6.9100,
-        "longitude": 79.8800,
-        "open_time": 600,
-        "close_time": 1200,
-        "visit_duration": 45,
-        "description": "A thoughtfully curated museum showcasing Sri Lanka’s rich history, artifacts, and artistic heritage. Ideal for history lovers and curious minds.",
-        "tags": ["museum", "history", "education", "culture", "artifacts", "indoor", "learning"],
-    },
-    {
-        "name": "National Library",
-        "latitude": 6.9210,
-        "longitude": 79.8670,
-        "open_time": 540,
-        "close_time": 1080,
-        "visit_duration": 30,
-        "description": "A calm and intellectual space filled with archives, literature, and research materials. A quiet escape for book lovers and deep thinkers.",
-        "tags": ["library", "quiet", "study", "books", "intellectual", "indoor", "relaxed"],
-    },
-    {
-        "name": "Galle Face Green",
-        "latitude": 6.9270,
-        "longitude": 79.8428,
-        "open_time": 0,
-        "close_time": 1440,
-        "visit_duration": 30,
-        "description": "A breezy oceanfront promenade perfect for sunset strolls, kite flying, and tasting local street food while waves crash nearby.",
-        "tags": ["park", "sea", "sunset", "street-food", "relaxed", "outdoor", "family-friendly", "scenic"],
-    },
-    {
-        "name": "Independence Square",
-        "latitude": 6.9036,
-        "longitude": 79.8693,
-        "open_time": 480,
-        "close_time": 1080,
-        "visit_duration": 40,
-        "description": "A historic national monument surrounded by lush gardens and jogging paths. Popular among locals for morning walks and evening relaxation.",
-        "tags": ["monument", "park", "history", "architecture", "photography", "outdoor", "cultural-landmark"],
-    },
-    {
-        "name": "Old Parliament",
-        "latitude": 6.9335,
-        "longitude": 79.8486,
-        "open_time": 540,
-        "close_time": 1020,
-        "visit_duration": 35,
-        "description": "An elegant colonial-era building overlooking the sea, offering stunning architecture and historical significance.",
-        "tags": ["history", "architecture", "colonial", "photography", "heritage-site", "scenic"],
-    },
-    {
-        "name": "Beira Lake",
-        "latitude": 6.9279,
-        "longitude": 79.8559,
-        "open_time": 480,
-        "close_time": 1200,
-        "visit_duration": 50,
-        "description": "A tranquil lake in the middle of the city with walking paths, small temples, and scenic views — perfect for a calm afternoon break.",
-        "tags": ["lake", "nature", "relaxing", "scenic", "photography", "outdoor", "peaceful"],
-    },
-    {
-        "name": "Pettah Market",
-        "latitude": 6.9352,
-        "longitude": 79.8501,
-        "open_time": 480,
-        "close_time": 1140,
-        "visit_duration": 45,
-        "description": "A chaotic and colorful bazaar packed with vendors selling spices, textiles, electronics, and street snacks — a true sensory adventure.",
-        "tags": ["market", "shopping", "street-life", "local-experience", "budget-friendly", "food", "vibrant"],
-    },
-    {
-        "name": "Kelaniya Temple",
-        "latitude": 6.9490,
-        "longitude": 79.9187,
-        "open_time": 480,
-        "close_time": 1080,
-        "visit_duration": 60,
-        "description": "One of Sri Lanka’s most sacred Buddhist temples, known for its grand murals and spiritual atmosphere.",
-        "tags": ["temple", "religion", "spiritual", "heritage", "pilgrimage", "architecture", "cultural-site"],
-    },
-    {
-        "name": "Negombo Beach",
-        "latitude": 7.2086,
-        "longitude": 79.8358,
-        "open_time": 480,
-        "close_time": 1200,
-        "visit_duration": 90,
-        "description": "Golden sands stretching along the coastline with fishing boats dotting the horizon — ideal for sunset views and relaxed beach vibes.",
-        "tags": ["beach", "sea", "sunset", "relaxing", "romantic", "nature", "coastal", "photography"],
-    },
-    {
-        "name": "Gangaramaya Temple",
-        "latitude": 6.9167,
-        "longitude": 79.8562,
-        "open_time": 540,
-        "close_time": 1080,
-        "visit_duration": 50,
-    
-        "description": "A fascinating temple blending Sri Lankan, Thai, and Chinese architectural styles with a museum-like collection of artifacts.",
-        "tags": ["temple", "culture", "architecture", "museum-like", "spiritual", "photography", "heritage"],
-    },
-    {
-        "name": "End",
-        "latitude": 7.2080,
-        "longitude": 79.8350,
-        "open_time": 0,
-        "close_time": 1440,
-        "visit_duration": 0,
-        "description": "The final stop of your journey — a peaceful coastal spot to unwind, reflect, and enjoy the sunset after a day of exploration.",
-        "tags": ["end", "coastal", "relaxation", "sunset", "reflection-point"],
-    }
+        {
+            "name": "Start",
+            "latitude": 6.9271,
+            "longitude": 79.8612,
+            "open_time": 0,
+            "close_time": 1440,
+            "visit_duration": 0,
+            "description": "The vibrant heart of Colombo where your journey begins — surrounded by colonial architecture, busy streets, and the pulse of the city waking up.",
+            "tags": ["start", "city-center", "urban", "landmark", "orientation-point"],
+        },
+        {
+            "name": "Temple A",
+            "latitude": 6.9200,
+            "longitude": 79.8700,
+            "open_time": 540,
+            "close_time": 1020,
+            "visit_duration": 60,
+            "description": "A serene Buddhist temple adorned with intricate carvings and incense-filled halls. A peaceful retreat from the city’s rush, perfect for quiet reflection and cultural discovery.",
+            "tags": [
+                "temple",
+                "culture",
+                "spiritual",
+                "peaceful",
+                "architecture",
+                "heritage",
+                "religious-site",
+            ],
+        },
+        {
+            "name": "Museum B",
+            "latitude": 6.9100,
+            "longitude": 79.8800,
+            "open_time": 600,
+            "close_time": 1200,
+            "visit_duration": 45,
+            "description": "A thoughtfully curated museum showcasing Sri Lanka’s rich history, artifacts, and artistic heritage. Ideal for history lovers and curious minds.",
+            "tags": [
+                "museum",
+                "history",
+                "education",
+                "culture",
+                "artifacts",
+                "indoor",
+                "learning",
+            ],
+        },
+        {
+            "name": "National Library",
+            "latitude": 6.9210,
+            "longitude": 79.8670,
+            "open_time": 540,
+            "close_time": 1080,
+            "visit_duration": 30,
+            "description": "A calm and intellectual space filled with archives, literature, and research materials. A quiet escape for book lovers and deep thinkers.",
+            "tags": [
+                "library",
+                "quiet",
+                "study",
+                "books",
+                "intellectual",
+                "indoor",
+                "relaxed",
+            ],
+        },
+        {
+            "name": "Galle Face Green",
+            "latitude": 6.9270,
+            "longitude": 79.8428,
+            "open_time": 0,
+            "close_time": 1440,
+            "visit_duration": 30,
+            "description": "A breezy oceanfront promenade perfect for sunset strolls, kite flying, and tasting local street food while waves crash nearby.",
+            "tags": [
+                "park",
+                "sea",
+                "sunset",
+                "street-food",
+                "relaxed",
+                "outdoor",
+                "family-friendly",
+                "scenic",
+            ],
+        },
+        {
+            "name": "Independence Square",
+            "latitude": 6.9036,
+            "longitude": 79.8693,
+            "open_time": 480,
+            "close_time": 1080,
+            "visit_duration": 40,
+            "description": "A historic national monument surrounded by lush gardens and jogging paths. Popular among locals for morning walks and evening relaxation.",
+            "tags": [
+                "monument",
+                "park",
+                "history",
+                "architecture",
+                "photography",
+                "outdoor",
+                "cultural-landmark",
+            ],
+        },
+        {
+            "name": "Old Parliament",
+            "latitude": 6.9335,
+            "longitude": 79.8486,
+            "open_time": 540,
+            "close_time": 1020,
+            "visit_duration": 35,
+            "description": "An elegant colonial-era building overlooking the sea, offering stunning architecture and historical significance.",
+            "tags": [
+                "history",
+                "architecture",
+                "colonial",
+                "photography",
+                "heritage-site",
+                "scenic",
+            ],
+        },
+        {
+            "name": "Beira Lake",
+            "latitude": 6.9279,
+            "longitude": 79.8559,
+            "open_time": 480,
+            "close_time": 1200,
+            "visit_duration": 50,
+            "description": "A tranquil lake in the middle of the city with walking paths, small temples, and scenic views — perfect for a calm afternoon break.",
+            "tags": [
+                "lake",
+                "nature",
+                "relaxing",
+                "scenic",
+                "photography",
+                "outdoor",
+                "peaceful",
+            ],
+        },
+        {
+            "name": "Pettah Market",
+            "latitude": 6.9352,
+            "longitude": 79.8501,
+            "open_time": 480,
+            "close_time": 1140,
+            "visit_duration": 45,
+            "description": "A chaotic and colorful bazaar packed with vendors selling spices, textiles, electronics, and street snacks — a true sensory adventure.",
+            "tags": [
+                "market",
+                "shopping",
+                "street-life",
+                "local-experience",
+                "budget-friendly",
+                "food",
+                "vibrant",
+            ],
+        },
+        {
+            "name": "Kelaniya Temple",
+            "latitude": 6.9490,
+            "longitude": 79.9187,
+            "open_time": 480,
+            "close_time": 1080,
+            "visit_duration": 60,
+            "description": "One of Sri Lanka’s most sacred Buddhist temples, known for its grand murals and spiritual atmosphere.",
+            "tags": [
+                "temple",
+                "religion",
+                "spiritual",
+                "heritage",
+                "pilgrimage",
+                "architecture",
+                "cultural-site",
+            ],
+        },
+        {
+            "name": "Negombo Beach",
+            "latitude": 7.2086,
+            "longitude": 79.8358,
+            "open_time": 480,
+            "close_time": 1200,
+            "visit_duration": 90,
+            "description": "Golden sands stretching along the coastline with fishing boats dotting the horizon — ideal for sunset views and relaxed beach vibes.",
+            "tags": [
+                "beach",
+                "sea",
+                "sunset",
+                "relaxing",
+                "romantic",
+                "nature",
+                "coastal",
+                "photography",
+            ],
+        },
+        {
+            "name": "Gangaramaya Temple",
+            "latitude": 6.9167,
+            "longitude": 79.8562,
+            "open_time": 540,
+            "close_time": 1080,
+            "visit_duration": 50,
+            "description": "A fascinating temple blending Sri Lankan, Thai, and Chinese architectural styles with a museum-like collection of artifacts.",
+            "tags": [
+                "temple",
+                "culture",
+                "architecture",
+                "museum-like",
+                "spiritual",
+                "photography",
+                "heritage",
+            ],
+        },
+        {
+            "name": "End",
+            "latitude": 7.2080,
+            "longitude": 79.8350,
+            "open_time": 0,
+            "close_time": 1440,
+            "visit_duration": 0,
+            "description": "The final stop of your journey — a peaceful coastal spot to unwind, reflect, and enjoy the sunset after a day of exploration.",
+            "tags": ["end", "coastal", "relaxation", "sunset", "reflection-point"],
+        },
     ]
 
     inserted_ids: list[str] = []
@@ -177,7 +270,7 @@ async def suggest_tags(
 ):
     allowed_tags = await repo.get_all_tags()
     try:
-            
+
         tags = await suggest_tags_from_description(
             description=payload.description,
             allowed_tags=allowed_tags,
@@ -186,6 +279,7 @@ async def suggest_tags(
     except Exception as e:
         print(f"Error suggesting tags: {e}")
         raise HTTPException(status_code=500, detail="Failed to suggest tags")
+
 
 @router.get("/", response_model=list[LocationOut])
 async def list_locations(
@@ -196,41 +290,70 @@ async def list_locations(
     return await repo.list_all(limit=limit, include_deleted=include_deleted)
 
 
-@router.post("/intent/nearby-match", response_model=list[MatchOut])
-async def intent_nearby_match(
-    payload: IntentNearbyRequest = Body(...),
+@router.post("/intent/auto-nearby-match", response_model=list[MatchOut])
+async def intent_auto_nearby_match(
+    payload: IntentAutoAreaRequest = Body(...),
     repo: LocationRepository = Depends(get_repo),
 ):
-    # 1) geocode area -> lat/lon
-    geo = await geocode_area(payload.area)
-    if not geo:
-        raise HTTPException(status_code=400, detail="Could not geocode the provided area")
-    lat, lon = geo
-
-    # 2) fetch nearby candidates
-    candidates = await repo.nearby(
-        latitude=lat,
-        longitude=lon,
-        max_distance_m=payload.radius_m,
-        limit=200,  # candidate pool
-    )
-
-    if not candidates:
-        return []
-
-    
     allowed_tags = await repo.get_all_tags()
 
-    ranked = await rank_locations(
+    # 1) Global ranking to find anchor location
+    global_candidates = await repo.fetch_for_ranking(limit=payload.prefilter)
+    if not global_candidates:
+        return []
+
+    ranked_global = await rank_locations(
         intention=payload.intention,
         allowed_tags=allowed_tags,
-        candidates=candidates,
+        candidates=global_candidates,
+        weight_embedding=0.5,
+        weight_tags=0.5,
+        top_k=1,  # we only need the best anchor
+    )
+
+    if not ranked_global:
+        return []
+
+    anchor = ranked_global[0]
+    print("anchor", anchor)
+    anchor_lat = anchor.get("latitude")
+    anchor_lon = anchor.get("longitude")
+
+    if anchor_lat is None or anchor_lon is None:
+        raise HTTPException(
+            status_code=500, detail="Best matched location has no coordinates"
+        )
+
+    # Optional safety: if anchor score is too low, don’t trust it
+    # if anchor["score"] < 0.35:
+    #     raise HTTPException(status_code=400, detail="Could not confidently determine an area from your intention.")
+
+    # 2) Nearby candidates around anchor
+    nearby_candidates = await repo.nearby(
+        anchor_id=anchor.get("_id"),
+        latitude=anchor_lat,
+        longitude=anchor_lon,
+        max_distance_m=payload.radius_m,
+        limit=200,
+    )
+    print("nearby candidates", nearby_candidates)
+
+    if not nearby_candidates:
+        return []
+
+    # 3) Rerank nearby results by intention (semantic+tags)
+    ranked_nearby = await rank_locations(
+        intention=payload.intention,
+        allowed_tags=allowed_tags,
+        candidates=nearby_candidates,
         weight_embedding=0.8,
         weight_tags=0.2,
         top_k=payload.limit,
     )
+    print("ranked nearby", ranked_nearby)
 
-    return ranked
+    return ranked_nearby
+
 
 @router.get("/nearby", response_model=list[LocationNearbyOut])
 async def get_nearby_locations(
@@ -239,16 +362,18 @@ async def get_nearby_locations(
     max_distance_m: int = Query(5000, ge=1, le=200000),
     limit: int = Query(20, ge=1, le=100),
     repo: LocationRepository = Depends(get_repo),
-    
 ):
-    print(f"Received nearby request: lat={latitude}, lon={longitude}, max_distance_m={max_distance_m}, limit={limit}")
+    print(
+        f"Received nearby request: lat={latitude}, lon={longitude}, max_distance_m={max_distance_m}, limit={limit}"
+    )
     return await repo.nearby(
         latitude=latitude,
         longitude=longitude,
         max_distance_m=max_distance_m,
-        limit=limit
+        limit=limit,
     )
-    
+
+
 @router.get("/{location_id}", response_model=LocationOut)
 async def get_location(
     location_id: str,
@@ -269,9 +394,10 @@ async def update_location(
 ):
     ok = await repo.update(location_id, payload.model_dump(exclude_unset=True))
     if not ok:
-        raise HTTPException(status_code=404, detail="Location not found or no fields updated")
+        raise HTTPException(
+            status_code=404, detail="Location not found or no fields updated"
+        )
     return {"updated": True}
-
 
 
 @router.delete("/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -283,4 +409,3 @@ async def delete_location(
     if not ok:
         raise HTTPException(status_code=404, detail="Location not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-

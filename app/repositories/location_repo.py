@@ -12,11 +12,13 @@ class LocationRepository:
         doc["id"] = str(doc["_id"])
         doc.pop("_id", None)
         return doc
-    
+
     async def get_all_tags(self) -> list[str]:
         tags = await self.collection.distinct("tags", {"is_deleted": {"$ne": True}})
         # normalize (optional)
-        tags = sorted({t.strip().lower() for t in tags if isinstance(t, str) and t.strip()})
+        tags = sorted(
+            {t.strip().lower() for t in tags if isinstance(t, str) and t.strip()}
+        )
         return tags
 
     async def create(self, data: dict) -> str:
@@ -104,7 +106,7 @@ class LocationRepository:
     #     longitude: float,
     #     max_distance_m: int = 1000,
     #     limit: int = 20,
-        
+
     # ) -> list[dict]:
     #     query = {
     #         "is_deleted": {"$ne": True},
@@ -135,9 +137,25 @@ class LocationRepository:
     #     except Exception as e:
     #         print(f"Error in nearby query: {e}")
     #         return []
-    
+
+    async def fetch_for_ranking(self, limit: int = 500) -> list[dict]:
+        projection = {
+            "name": 1,
+            "latitude": 1,
+            "longitude": 1,
+            "tags": 1,
+            "embedding": 1,
+        }
+        docs = []
+        async for d in self.collection.find(
+            {"is_deleted": {"$ne": True}}, projection
+        ).limit(limit):
+            docs.append(self._to_out(d))
+        return docs
+
     async def nearby(
         self,
+        anchor_id: str,
         latitude: float,
         longitude: float,
         max_distance_m: int = 5000,
@@ -145,17 +163,22 @@ class LocationRepository:
         include_deleted: bool = False,
     ) -> list[dict]:
         query = {
+            "_id": {"$ne": ObjectId(anchor_id)},
             "location": {
                 "$near": {
-                    "$geometry": {"type": "Point", "coordinates": [longitude, latitude]},
+                    "$geometry": {
+                        "type": "Point",
+                        "coordinates": [longitude, latitude],
+                    },
                     "$maxDistance": max_distance_m,
                 }
-            }
+            },
         }
         if not include_deleted:
             query["is_deleted"] = {"$ne": True}
 
+        projection = {"embedding": 0}
         docs = []
-        async for d in self.collection.find(query).limit(limit):
+        async for d in self.collection.find(query, projection).limit(limit):
             docs.append(self._to_out(d))
         return docs
