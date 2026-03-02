@@ -4,7 +4,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.models.tts import TTSRequest
 from app.services.story_teller.story_agent import generate_location_story
-from app.services.tts.elevenlabs_service import text_to_speech_stream
+from app.services.tts.gpt_tts_service import text_to_speech_stream
 
 router = APIRouter(prefix="/tts", tags=["tts"])
 

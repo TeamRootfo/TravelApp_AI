@@ -71,10 +71,12 @@ fetch_wikipedia_summary_tool = FunctionTool(func=fetch_wikipedia_summary)
 
 root_agent = Agent(
     name="tour_storyteller",
-    model=LiteLlm(model="openai/gpt-4.1-mini", temperature=0.2,api_key=settings.OPENAI_API_KEY),
+    model=LiteLlm(
+        model="openai/gpt-4.1-mini", temperature=0.2, api_key=settings.OPENAI_API_KEY
+    ),
     description="Creates tourist-friendly stories about a location.",
     instruction=STORY_AGENT_PROMPT,
-    tools=[fetch_wikipedia_summary_tool]
+    tools=[fetch_wikipedia_summary_tool],
 )
 
 _session_service = InMemorySessionService()
@@ -113,22 +115,27 @@ async def generate_location_story(
 
     final_text = ""
     async for event in events:
-        calls = event.get_function_calls() if hasattr(event, "get_function_calls") else None
+        calls = (
+            event.get_function_calls() if hasattr(event, "get_function_calls") else None
+        )
         if calls:
             for call in calls:
-                print("🔧 TOOL CALLED")
+                print(" TOOL CALLED")
                 print("  name:", call.name)
                 print("  args:", call.args)
 
         # 2) Tool response(s)
-        responses = event.get_function_responses() if hasattr(event, "get_function_responses") else None
+        responses = (
+            event.get_function_responses()
+            if hasattr(event, "get_function_responses")
+            else None
+        )
         if responses:
             for resp in responses:
-                print("📦 TOOL RESULT")
+                print(" TOOL RESULT")
                 print("  name:", resp.name)
                 print("  output:", resp.response)  # <- dict returned by your tool
 
-                
         if event.is_final_response():
             final_text = (event.content.parts[0].text or "").strip()
 
