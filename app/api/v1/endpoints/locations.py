@@ -13,7 +13,7 @@ from app.models.location import (
 )
 from app.deps.database import get_location_collection
 from app.services.geocode import geocode_area
-from app.services.intent_ranker import rank_locations, rank_candidate_locations
+from app.services.intents.intent_matcher import get_ranked_nearby_locations_from_intention
 from app.services.tagging import suggest_tags_from_description
 
 logger = logging.getLogger(__name__)
@@ -321,71 +321,12 @@ async def intent_auto_nearby_match(
     payload: IntentAutoAreaRequest = Body(...),
     repo: LocationRepository = Depends(get_repo),
 ):
-    logger.info(f"[intent_auto_nearby_match] Intention: {payload.intention}")
-    allowed_tags = await repo.get_all_tags()
-
-    # 1) Global ranking to find anchor location
-    global_candidates = await repo.fetch_for_ranking(limit=payload.prefilter)
-    if not global_candidates:
-        return []
-
-    ranked_global = await rank_locations(
-        collection=repo.collection,
+    return await get_ranked_nearby_locations_from_intention(
+        repo=repo,
         intention=payload.intention,
-        allowed_tags=allowed_tags,
-        weight_embedding=0.5,
-        weight_tags=0.5,
-        top_k=1,  # we only need the best anchor
+        radius_m=payload.radius_m,
+        limit=payload.limit,
     )
-
-    logger.info(f"[intent_auto_nearby_match] ranked global candidates: {ranked_global}")
-
-    if not ranked_global:
-        logger.warning("[intent_auto_nearby_match] No global candidates found")
-        return []
-
-    anchor = ranked_global[0]
-    logger.info(f"[intent_auto_nearby_match] Anchor found: {anchor}")
-    anchor_lat = anchor.get("latitude")
-    anchor_lon = anchor.get("longitude")
-
-    if anchor_lat is None or anchor_lon is None:
-        raise HTTPException(
-            status_code=500, detail="Best matched location has no coordinates"
-        )
-
-    # Optional safety: if anchor score is too low, don’t trust it
-    # if anchor["score"] < 0.35:
-    #     raise HTTPException(status_code=400, detail="Could not confidently determine an area from your intention.")
-
-    # 2) Nearby candidates around anchor
-    nearby_candidates = await repo.nearby(
-        anchor_id=anchor.get("_id"),
-        latitude=anchor_lat,
-        longitude=anchor_lon,
-        max_distance_m=payload.radius_m,
-        limit=200,
-    )
-    logger.info(
-        f"[intent_auto_nearby_match] Nearby candidates count: {len(nearby_candidates)}"
-    )
-
-    if not nearby_candidates:
-        return []
-
-    # 3) Rerank nearby results by intention (semantic+tags)
-    ranked_nearby = await rank_candidate_locations(
-        intention=payload.intention,
-        allowed_tags=allowed_tags,
-        candidates=nearby_candidates,
-        weight_embedding=0.6,
-        weight_tags=0.4,
-        top_k=payload.limit,
-    )
-
-    logger.info(f"[intent_auto_nearby_match] Ranked nearby count: {len(ranked_nearby)}")
-
-    return ranked_nearby
 
 
 @router.get("/nearby", response_model=list[LocationNearbyOut])
