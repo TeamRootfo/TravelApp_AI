@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from pydantic import BaseModel, Field
 
@@ -7,11 +8,12 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 class TagSuggestion(BaseModel):
     tags: List[str] = Field(
-        default_factory=list,
-        description="Tags selected ONLY from allowed_tags"
+        default_factory=list, description="Tags selected ONLY from allowed_tags"
     )
 
 
@@ -19,6 +21,9 @@ async def suggest_tags_from_description(
     description: str,
     allowed_tags: List[str],
 ) -> List[str]:
+    logger.info(
+        f"[suggest_tags_from_description] Suggesting tags for: {description[:50]}..."
+    )
 
     llm = ChatOpenAI(
         api_key=settings.OPENAI_API_KEY,
@@ -42,8 +47,7 @@ async def suggest_tags_from_description(
             ),
             (
                 "human",
-                "allowed_tags: {allowed_tags}\n\n"
-                "description: {description}",
+                "allowed_tags: {allowed_tags}\n\n" "description: {description}",
             ),
         ]
     )
@@ -66,4 +70,5 @@ async def suggest_tags_from_description(
         if tt in allowed and tt not in out:
             out.append(tt)
 
+    logger.info(f"[suggest_tags_from_description] Resulting tags: {out}")
     return out

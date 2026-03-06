@@ -1,5 +1,8 @@
+import logging
 from copy import deepcopy
 from .solver import solve_one_day
+
+logger = logging.getLogger(__name__)
 
 
 def plan_trip_multi_day(
@@ -17,6 +20,9 @@ def plan_trip_multi_day(
     time_limit_seconds=5,
     max_stops_per_day=6,
 ):
+    logger.info(
+        f"[plan_trip_multi_day] Planning multi-day trip for {trip_days} days and {len(all_locations)} POIs"
+    )
     remaining_original = [
         i
         for i in range(len(all_locations))
@@ -35,6 +41,7 @@ def plan_trip_multi_day(
         start_original,
         next_start_original=None,
     ):
+        logger.info(f"[build_day_output] Building output for day: {day_label}")
         """
         Convert OR-Tools result to API-friendly JSON.
         """
@@ -93,6 +100,9 @@ def plan_trip_multi_day(
         }
 
     def run_final_to_end_day(start_from_original):
+        logger.info(
+            f"[run_final_to_end_day] Planning final stretch from {start_from_original}"
+        )
         """One last day: go from current start to real End (no optional POIs)."""
         day_original_indices = [start_from_original, end_original_index]
         day_locations = [deepcopy(all_locations[i]) for i in day_original_indices]
@@ -233,6 +243,9 @@ def plan_trip_multi_day(
 
         current_start_original = next_start_original
 
+    logger.info(
+        f"[plan_trip_multi_day] Completed multi-day plan. Total score: {total_score}"
+    )
     return {
         "start_original_index": start_original_index,
         "end_original_index": end_original_index,

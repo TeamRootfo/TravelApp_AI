@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 from typing import IO, Optional
 
@@ -6,10 +7,12 @@ from openai import OpenAI
 from app.core.config import settings
 
 # Make sure you have settings.OPENAI_API_KEY set
+logger = logging.getLogger(__name__)
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 def text_to_speech_stream(text: str) -> Optional[IO[bytes]]:
+    logger.info(f"[text_to_speech_stream] Converting text to speech: {text[:50]}...")
     try:
         audio_stream = BytesIO()
 
@@ -27,8 +30,9 @@ def text_to_speech_stream(text: str) -> Optional[IO[bytes]]:
                     audio_stream.write(chunk)
 
         audio_stream.seek(0)
+        logger.info("[text_to_speech_stream] Speech generation complete")
         return audio_stream
 
     except Exception as e:
-        print(f"Error generating speech: {e}")
+        logger.error(f"[text_to_speech_stream] Error generating speech: {e}")
         return None

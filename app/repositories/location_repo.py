@@ -1,19 +1,25 @@
+import logging
 from bson import ObjectId
 from datetime import datetime, timezone
 from app.services.embeddings import embed_text
 from motor.motor_asyncio import AsyncIOMotorCollection
 
+logger = logging.getLogger(__name__)
+
 
 class LocationRepository:
     def __init__(self, collection):
         self.collection = collection
+        logger.info("[LocationRepository.__init__] Initialized repository")
 
     def _to_out(self, doc: dict) -> dict:
+        logger.info(f"[_to_out] Converting document ID: {doc.get('_id')}")
         doc["id"] = str(doc["_id"])
         doc.pop("_id", None)
         return doc
 
     async def get_all_tags(self) -> list[str]:
+        logger.info("[get_all_tags] Fetching all tags")
         tags = await self.collection.distinct("tags", {"is_deleted": {"$ne": True}})
         # normalize (optional)
         tags = sorted(
@@ -22,6 +28,7 @@ class LocationRepository:
         return tags
 
     async def create(self, data: dict) -> str:
+        logger.info(f"[create] Creating location: {data.get('name')}")
         # soft delete defaults
         data.setdefault("is_deleted", False)
         data.setdefault("deleted_at", None)
@@ -35,11 +42,15 @@ class LocationRepository:
         data["embedding"] = await embed_text(data.get("description", ""))
 
         result = await self.collection.insert_one(data)
+        logger.info(f"[create] Created location ID: {result.inserted_id}")
         return str(result.inserted_id)
 
     async def list_all(
         self, limit: int = 200, include_deleted: bool = False
     ) -> list[dict]:
+        logger.info(
+            f"[list_all] Listing locations: limit={limit}, include_deleted={include_deleted}"
+        )
         query = {} if include_deleted else {"is_deleted": {"$ne": True}}
         docs = []
         async for d in self.collection.find(query).limit(limit):
@@ -47,6 +58,7 @@ class LocationRepository:
         return docs
 
     async def get(self, location_id: str, include_deleted: bool = False) -> dict | None:
+        logger.info(f"[get] Fetching location ID: {location_id}")
         if not ObjectId.is_valid(location_id):
             return None
         query = {"_id": ObjectId(location_id)}
@@ -56,6 +68,7 @@ class LocationRepository:
         return self._to_out(doc) if doc else None
 
     async def update(self, location_id: str, data: dict) -> bool:
+        logger.info(f"[update] Updating location ID: {location_id}")
         if not ObjectId.is_valid(location_id):
             return False
 
@@ -88,15 +101,22 @@ class LocationRepository:
             {"_id": ObjectId(location_id), "is_deleted": {"$ne": True}},
             {"$set": data},
         )
+        logger.info(
+            f"[update] Update status for {location_id}: {result.matched_count > 0}"
+        )
         return result.matched_count > 0
 
     async def soft_delete(self, location_id: str) -> bool:
+        logger.info(f"[soft_delete] Soft deleting location ID: {location_id}")
         if not ObjectId.is_valid(location_id):
             return False
         now = datetime.now(timezone.utc).isoformat()
         result = await self.collection.update_one(
             {"_id": ObjectId(location_id), "is_deleted": {"$ne": True}},
             {"$set": {"is_deleted": True, "deleted_at": now}},
+        )
+        logger.info(
+            f"[soft_delete] Soft delete status for {location_id}: {result.matched_count > 0}"
         )
         return result.matched_count > 0
 
@@ -139,6 +159,9 @@ class LocationRepository:
     #         return []
 
     async def fetch_for_ranking(self, limit: int = 500) -> list[dict]:
+        logger.info(
+            f"[fetch_for_ranking] Fetching locations for ranking: limit={limit}"
+        )
         projection = {
             "name": 1,
             "latitude": 1,
@@ -162,6 +185,7 @@ class LocationRepository:
         limit: int = 200,
         include_deleted: bool = False,
     ) -> list[dict]:
+        logger.info(f"[nearby] Finding nearby locations around: {anchor_id}")
         query = {
             "_id": {"$ne": ObjectId(anchor_id)},
             "location": {

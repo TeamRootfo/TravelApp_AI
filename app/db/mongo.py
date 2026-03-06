@@ -1,5 +1,8 @@
+import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class MongoDB:
@@ -10,31 +13,35 @@ mongodb = MongoDB()
 
 
 async def connect_to_mongo():
+    logger.info("[connect_to_mongo] Connecting to MongoDB")
     mongodb.client = AsyncIOMotorClient(settings.MONGO_URI)
 
     await mongodb.client.admin.command("ping")
-    print("MongoDB Connected")
+    logger.info("[connect_to_mongo] MongoDB Connected")
     await create_indexes()
 
 
 async def create_indexes():
+    logger.info("[create_indexes] Creating indexes")
     db = mongodb.client[settings.MONGO_DB]
 
-    print("DB:", db.name)
-    print("Collections:", await db.list_collection_names())
+    logger.info(f"[create_indexes] DB: {db.name}")
+    logger.info(f"[create_indexes] Collections: {await db.list_collection_names()}")
 
     idx_name = await db["locations"].create_index([("location", "2dsphere")])
-    print("Created/Existing index name:", idx_name)
+    logger.info(f"[create_indexes] Created/Existing index name: {idx_name}")
 
     info = await db["locations"].index_information()
-    print("Index info:", info)
+    logger.info(f"[create_indexes] Index info: {info}")
 
 
 async def close_mongo_connection():
+    logger.info("[close_mongo_connection] Closing MongoDB connection")
     if mongodb.client:
         mongodb.client.close()
-        print("MongoDB Disconnected")
+        logger.info("[close_mongo_connection] MongoDB Disconnected")
 
 
 def get_db():
+    logger.info("[get_db] Getting database instance")
     return mongodb.client[settings.MONGO_DB]

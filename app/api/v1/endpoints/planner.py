@@ -1,13 +1,18 @@
+import logging
 from fastapi import APIRouter
 from app.models.planner import PlannerRequest
 from app.services.planner.multi_day import plan_trip_multi_day
 from typing import List
+
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/planner", tags=["planner"])
 
 
 @router.post("/plan")
 async def plan_trip():
+    logger.info("[plan_trip] Planning trip")
     # locations = [...]  # load from DB later
     locations = [
         {
@@ -138,6 +143,8 @@ async def plan_trip():
             daily_time_budget_minutes=600,
             max_stops_per_day=3,
         )
+        logger.info("[plan_trip] Trip planned successfully")
         return result
     except Exception as e:
+        logger.error(f"[plan_trip] Error planning trip: {e}")
         return {"error": str(e)}

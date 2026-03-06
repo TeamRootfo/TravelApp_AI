@@ -1,11 +1,16 @@
 # app/services/wiki_tool.py
+import logging
 import httpx
 from typing import Dict, Any
 from urllib.parse import quote
 
 WIKI_UA = "TravelApp_AI/1.0 (contact: gptemail404@gmail.com)"
 
+logger = logging.getLogger(__name__)
+
+
 async def fetch_wikipedia_summary(place: str) -> Dict[str, Any]:
+    logger.info(f"[fetch_wikipedia_summary] Fetching summary for: {place}")
     """Fetch a short factual summary for a place from Wikipedia."""
     place = (place or "").strip()
     if not place:
@@ -31,7 +36,10 @@ async def fetch_wikipedia_summary(place: str) -> Dict[str, Any]:
             }
 
         data = r.json()
-        
+
+        logger.info(
+            f"[fetch_wikipedia_summary] Successfully fetched summary for {place}"
+        )
         return {
             "status": "success",
             "title": data.get("title"),
@@ -39,4 +47,5 @@ async def fetch_wikipedia_summary(place: str) -> Dict[str, Any]:
             "url": (data.get("content_urls") or {}).get("desktop", {}).get("page"),
         }
     except Exception as e:
+        logger.error(f"[fetch_wikipedia_summary] Error fetching Wikipedia summary: {e}")
         return {"status": "error", "error_message": f"Request failed: {e}"}

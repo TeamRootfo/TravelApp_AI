@@ -1,12 +1,23 @@
+import logging
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 from math import radians, sin, cos, sqrt, atan2
 from copy import deepcopy
+
+# Configure logging for CLI usage if needed, but usually it's already configured in app/main.py
+# However, this file seems to be a standalone script too.
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 # --------------------------
 # Haversine distance (km)
 # --------------------------
 def haversine(lat1, lon1, lat2, lon2):
+    logger.info(
+        f"[haversine] Calculating distance between ({lat1}, {lon1}) and ({lat2}, {lon2})"
+    )
     R = 6371
     dlat = radians(lat2 - lat1)
     dlon = radians(lon2 - lon1)
@@ -20,6 +31,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
 
 def fmt_hhmm(minutes_in_day: int) -> str:
+    logger.info(f"[fmt_hhmm] Formatting minutes: {minutes_in_day}")
     h = minutes_in_day // 60
     m = minutes_in_day % 60
     return f"{h:02d}:{m:02d}"
@@ -28,6 +40,9 @@ def fmt_hhmm(minutes_in_day: int) -> str:
 def create_time_matrix(
     locations, speed_kmph=30, road_factor=1.25, flexible_end_index=None
 ):
+    logger.info(
+        f"[create_time_matrix] Creating time matrix for {len(locations)} locations"
+    )
     """
     Travel time matrix in minutes.
     - Rounds and enforces minimum 1 minute (except i==j).
@@ -78,6 +93,9 @@ def solve_one_day(
     flexible_end_index=None,
     max_stops_per_day=None,  # <-- NEW
 ):
+    logger.info(
+        f"[solve_one_day] Solving single day for {len(day_locations)} locations"
+    )
     """
     Single-day solver:
       - objective: minimize travel_cost + skipped_penalties
@@ -236,6 +254,9 @@ def plan_trip_multi_day(
     time_limit_seconds=5,
     max_stops_per_day=6,  # <-- NEW
 ):
+    logger.info(
+        f"[plan_trip_multi_day] Planning multi-day trip for {trip_days} days and {len(all_locations)} POIs"
+    )
     remaining_original = [
         i
         for i in range(len(all_locations))
@@ -248,6 +269,9 @@ def plan_trip_multi_day(
     total_score = 0
 
     def run_final_to_end_day(start_from_original):
+        logger.info(
+            f"[run_final_to_end_day] Planning final stretch from {start_from_original}"
+        )
         """One last day: go from current start to real End, no POIs."""
         day_original_indices = [start_from_original, end_original_index]
         day_locations = [deepcopy(all_locations[i]) for i in day_original_indices]
@@ -380,21 +404,21 @@ def plan_trip_multi_day(
     # --------------------------
     # Print
     # --------------------------
-    print("\n==============================")
-    print("=== Multi-Day Trip Plan (A+ + max stops/day) ===")
-    print("==============================")
-    print("Rule: Day N starts at Day N-1 last stop; real End only on last day.")
-    print(f"Max stops/day: {max_stops_per_day}\n")
+    logger.info("==============================")
+    logger.info("=== Multi-Day Trip Plan (A+ + max stops/day) ===")
+    logger.info("==============================")
+    logger.info("Rule: Day N starts at Day N-1 last stop; real End only on last day.")
+    logger.info(f"Max stops/day: {max_stops_per_day}\n")
 
-    print(f"Start time each day: {fmt_hhmm(start_time_minutes)}")
-    print(
+    logger.info(f"Start time each day: {fmt_hhmm(start_time_minutes)}")
+    logger.info(
         f"Daily budget: {daily_time_budget_minutes} min ({daily_time_budget_minutes/60:.1f} hrs)"
     )
-    print(f"Days planned: {trip_days}")
-    print(
+    logger.info(f"Days planned: {trip_days}")
+    logger.info(
         f"Speed: {speed_kmph} km/h | road_factor={road_factor} | Wait allowed: {max_wait_time} min"
     )
-    print(
+    logger.info(
         f"Objective: maximize score vs travel (score_to_minutes={score_to_minutes}, travel_weight={minimize_travel_weight})"
     )
 
@@ -424,36 +448,36 @@ def plan_trip_multi_day(
 
         end_time = arrival[-1]
         if dp.get("is_last_day", False) and day != "FINAL":
-            print(
+            logger.info(
                 f"End at (FINAL): {all_locations[end_original_index]['name']} at {fmt_hhmm(end_time)} ({end_time} min)"
             )
         elif day == "FINAL":
-            print(
+            logger.info(
                 f"End at (FINAL): {all_locations[end_original_index]['name']} at {fmt_hhmm(end_time)} ({end_time} min)"
             )
         else:
             last_real_node = route_nodes[-2]
             last_real_orig = mapping[last_real_node]
-            print(
+            logger.info(
                 f"End-of-day at: {all_locations[last_real_orig]['name']} at {fmt_hhmm(end_time)} ({end_time} min)"
             )
-            print(
+            logger.info(
                 f"Next day starts at: {all_locations[dp['next_start_original']]['name']}"
             )
 
-        print(f"Day score collected: {res['total_score']}")
-        print(f"Day elapsed: {end_time - start_time_minutes} min")
+        logger.info(f"Day score collected: {res['total_score']}")
+        logger.info(f"Day elapsed: {end_time - start_time_minutes} min")
 
-    print(f"\nTOTAL score across days: {total_score}")
+    logger.info(f"\nTOTAL score across days: {total_score}")
 
     if remaining_original:
-        print("\nUnvisited places after planning:")
+        logger.info("\nUnvisited places after planning:")
         for i in remaining_original:
-            print(
+            logger.info(
                 f" - {all_locations[i]['name']} (score={all_locations[i].get('score', 0)})"
             )
     else:
-        print("\nAll places visited (within constraints).")
+        logger.info("\nAll places visited (within constraints).")
 
 
 # --------------------------

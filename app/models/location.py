@@ -18,6 +18,7 @@ class LocationBase(BaseModel):
     description: str = Field(..., min_length=1)
     tags: List[str] = Field(default_factory=list)
     embedding: Optional[List[float]] = None
+    rating: Optional[float] = None
 
 
 class LocationCreate(LocationBase):
@@ -34,6 +35,7 @@ class LocationUpdate(BaseModel):
     description: Optional[str] = None
     tags: Optional[List[str]] = None
     embedding: Optional[List[float]] = None
+    rating: Optional[float] = None
 
 
 class LocationOut(LocationBase):

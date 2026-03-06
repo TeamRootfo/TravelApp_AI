@@ -53,7 +53,7 @@
 
 #     return final_text
 
-
+import logging
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -65,6 +65,8 @@ from app.services.story_teller.prompts import STORY_AGENT_PROMPT
 from app.services.story_teller.tools import fetch_wikipedia_summary
 from app.services.story_teller.prompts import STORY_AGENT_PROMPT
 from google.adk.tools import FunctionTool
+
+logger = logging.getLogger(__name__)
 
 APP_NAME = "travel_story_agent"
 fetch_wikipedia_summary_tool = FunctionTool(func=fetch_wikipedia_summary)
@@ -86,6 +88,9 @@ _runner = Runner(agent=root_agent, app_name=APP_NAME, session_service=_session_s
 async def generate_location_story(
     location_name: str, user_id: str = "api", session_id: str = None
 ) -> str:
+    logger.info(
+        f"[generate_location_story] Generating story for: {location_name} (user: {user_id})"
+    )
     # Stateless: new session each call (best for APIs)
     if session_id is None:
         session_id = f"story:{location_name}"
@@ -120,9 +125,9 @@ async def generate_location_story(
         )
         if calls:
             for call in calls:
-                print(" TOOL CALLED")
-                print("  name:", call.name)
-                print("  args:", call.args)
+                logger.info(
+                    f"[generate_location_story] TOOL CALLED: {call.name} with args: {call.args}"
+                )
 
         # 2) Tool response(s)
         responses = (
@@ -132,11 +137,14 @@ async def generate_location_story(
         )
         if responses:
             for resp in responses:
-                print(" TOOL RESULT")
-                print("  name:", resp.name)
-                print("  output:", resp.response)  # <- dict returned by your tool
+                logger.info(
+                    f"[generate_location_story] TOOL RESULT for {resp.name}: {resp.response}"
+                )
 
         if event.is_final_response():
             final_text = (event.content.parts[0].text or "").strip()
 
+    logger.info(
+        f"[generate_location_story] Completed story generation. Length: {len(final_text)}"
+    )
     return final_text

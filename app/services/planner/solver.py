@@ -1,5 +1,8 @@
+import logging
 from ortools.constraint_solver import pywrapcp, routing_enums_pb2
 from .distance import create_time_matrix
+
+logger = logging.getLogger(__name__)
 
 
 def solve_one_day(
@@ -15,8 +18,11 @@ def solve_one_day(
     minimize_travel_weight=1,
     time_limit_seconds=5,
     flexible_end_index=None,
-    max_stops_per_day=None,   # <-- NEW
+    max_stops_per_day=None,  # <-- NEW
 ):
+    logger.info(
+        f"[solve_one_day] Solving single day for {len(day_locations)} locations"
+    )
     """
     Single-day solver:
       - objective: minimize travel_cost + skipped_penalties
@@ -98,16 +104,20 @@ def solve_one_day(
         stop_cb_idx = routing.RegisterTransitCallback(stop_count_cb)
         routing.AddDimension(
             stop_cb_idx,
-            0,                   # no slack
+            0,  # no slack
             int(max_stops_per_day),
-            True,                # start cumul = 0
+            True,  # start cumul = 0
             "Stops",
         )
 
     # Search
     params = pywrapcp.DefaultRoutingSearchParameters()
-    params.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
-    params.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+    params.first_solution_strategy = (
+        routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+    )
+    params.local_search_metaheuristic = (
+        routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+    )
     params.time_limit.seconds = int(time_limit_seconds)
 
     sol = routing.SolveWithParameters(params)

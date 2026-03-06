@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 
 from app.models.intent import IntentAutoAreaRequest, MatchOut
@@ -12,13 +13,16 @@ from app.models.location import (
 )
 from app.deps.database import get_location_collection
 from app.services.geocode import geocode_area
-from app.services.intent_ranker import rank_locations
+from app.services.intent_ranker import rank_locations, rank_candidate_locations
 from app.services.tagging import suggest_tags_from_description
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/locations", tags=["locations"])
 
 
 def get_repo(collection=Depends(get_location_collection)) -> LocationRepository:
+    logger.info("[get_repo] Getting LocationRepository instance")
     return LocationRepository(collection)
 
 
@@ -27,12 +31,15 @@ async def create_location(
     payload: LocationCreate,
     repo: LocationRepository = Depends(get_repo),
 ):
+    logger.info(f"[create_location] Creating location: {payload.name}")
     _id = await repo.create(payload.model_dump())
+    logger.info(f"[create_location] Created location with ID: {_id}")
     return {"id": _id}
 
 
 @router.post("/seed", status_code=status.HTTP_201_CREATED)
 async def seed_locations(repo: LocationRepository = Depends(get_repo)):
+    logger.info("[seed_locations] Seeding locations")
     # Must include all required fields from LocationBase (description is required).
     locations = [
         {
@@ -44,6 +51,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
             "visit_duration": 0,
             "description": "The vibrant heart of Colombo where your journey begins — surrounded by colonial architecture, busy streets, and the pulse of the city waking up.",
             "tags": ["start", "city-center", "urban", "landmark", "orientation-point"],
+            "rating": 0.0,
         },
         {
             "name": "Temple A",
@@ -62,6 +70,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "heritage",
                 "religious-site",
             ],
+            "rating": 4.5,
         },
         {
             "name": "Museum B",
@@ -80,6 +89,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "indoor",
                 "learning",
             ],
+            "rating": 4.0,
         },
         {
             "name": "National Library",
@@ -98,6 +108,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "indoor",
                 "relaxed",
             ],
+            "rating": 4.0,
         },
         {
             "name": "Galle Face Green",
@@ -117,6 +128,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "family-friendly",
                 "scenic",
             ],
+            "rating": 3.0,
         },
         {
             "name": "Independence Square",
@@ -152,6 +164,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "heritage-site",
                 "scenic",
             ],
+            "rating": 4.0,
         },
         {
             "name": "Beira Lake",
@@ -170,6 +183,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "outdoor",
                 "peaceful",
             ],
+            "rating": 2.0,
         },
         {
             "name": "Pettah Market",
@@ -188,6 +202,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "food",
                 "vibrant",
             ],
+            "rating": 2.0,
         },
         {
             "name": "Kelaniya Temple",
@@ -206,6 +221,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "architecture",
                 "cultural-site",
             ],
+            "rating": 2.0,
         },
         {
             "name": "Negombo Beach",
@@ -225,6 +241,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "coastal",
                 "photography",
             ],
+            "rating": 5.0,
         },
         {
             "name": "Gangaramaya Temple",
@@ -243,6 +260,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
                 "photography",
                 "heritage",
             ],
+            "rating": 5.0,
         },
         {
             "name": "End",
@@ -253,6 +271,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
             "visit_duration": 0,
             "description": "The final stop of your journey — a peaceful coastal spot to unwind, reflect, and enjoy the sunset after a day of exploration.",
             "tags": ["end", "coastal", "relaxation", "sunset", "reflection-point"],
+            "rating": 0.0,
         },
     ]
 
@@ -260,6 +279,7 @@ async def seed_locations(repo: LocationRepository = Depends(get_repo)):
     for loc in locations:
         inserted_ids.append(await repo.create(loc))
 
+    logger.info(f"[seed_locations] Successfully seeded {len(inserted_ids)} locations")
     return {"inserted_ids": inserted_ids}
 
 
@@ -270,14 +290,17 @@ async def suggest_tags(
 ):
     allowed_tags = await repo.get_all_tags()
     try:
-
+        logger.info(
+            f"[suggest_tags] Suggesting tags for description: {payload.description[:50]}..."
+        )
         tags = await suggest_tags_from_description(
             description=payload.description,
             allowed_tags=allowed_tags,
         )
+        logger.info(f"[suggest_tags] Suggested tags: {tags}")
         return {"tags": tags}
     except Exception as e:
-        print(f"Error suggesting tags: {e}")
+        logger.error(f"[suggest_tags] Error suggesting tags: {e}")
         raise HTTPException(status_code=500, detail="Failed to suggest tags")
 
 
@@ -287,6 +310,9 @@ async def list_locations(
     include_deleted: bool = Query(False),
     repo: LocationRepository = Depends(get_repo),
 ):
+    logger.info(
+        f"[list_locations] Listing locations: limit={limit}, include_deleted={include_deleted}"
+    )
     return await repo.list_all(limit=limit, include_deleted=include_deleted)
 
 
@@ -295,6 +321,7 @@ async def intent_auto_nearby_match(
     payload: IntentAutoAreaRequest = Body(...),
     repo: LocationRepository = Depends(get_repo),
 ):
+    logger.info(f"[intent_auto_nearby_match] Intention: {payload.intention}")
     allowed_tags = await repo.get_all_tags()
 
     # 1) Global ranking to find anchor location
@@ -303,19 +330,22 @@ async def intent_auto_nearby_match(
         return []
 
     ranked_global = await rank_locations(
+        collection=repo.collection,
         intention=payload.intention,
         allowed_tags=allowed_tags,
-        candidates=global_candidates,
         weight_embedding=0.5,
         weight_tags=0.5,
         top_k=1,  # we only need the best anchor
     )
 
+    logger.info(f"[intent_auto_nearby_match] ranked global candidates: {ranked_global}")
+
     if not ranked_global:
+        logger.warning("[intent_auto_nearby_match] No global candidates found")
         return []
 
     anchor = ranked_global[0]
-    print("anchor", anchor)
+    logger.info(f"[intent_auto_nearby_match] Anchor found: {anchor}")
     anchor_lat = anchor.get("latitude")
     anchor_lon = anchor.get("longitude")
 
@@ -336,21 +366,24 @@ async def intent_auto_nearby_match(
         max_distance_m=payload.radius_m,
         limit=200,
     )
-    print("nearby candidates", nearby_candidates)
+    logger.info(
+        f"[intent_auto_nearby_match] Nearby candidates count: {len(nearby_candidates)}"
+    )
 
     if not nearby_candidates:
         return []
 
     # 3) Rerank nearby results by intention (semantic+tags)
-    ranked_nearby = await rank_locations(
+    ranked_nearby = await rank_candidate_locations(
         intention=payload.intention,
         allowed_tags=allowed_tags,
         candidates=nearby_candidates,
-        weight_embedding=0.8,
-        weight_tags=0.2,
+        weight_embedding=0.6,
+        weight_tags=0.4,
         top_k=payload.limit,
     )
-    print("ranked nearby", ranked_nearby)
+
+    logger.info(f"[intent_auto_nearby_match] Ranked nearby count: {len(ranked_nearby)}")
 
     return ranked_nearby
 
@@ -363,8 +396,8 @@ async def get_nearby_locations(
     limit: int = Query(20, ge=1, le=100),
     repo: LocationRepository = Depends(get_repo),
 ):
-    print(
-        f"Received nearby request: lat={latitude}, lon={longitude}, max_distance_m={max_distance_m}, limit={limit}"
+    logger.info(
+        f"[get_nearby_locations] lat={latitude}, lon={longitude}, max_distance_m={max_distance_m}, limit={limit}"
     )
     return await repo.nearby(
         latitude=latitude,
@@ -380,8 +413,10 @@ async def get_location(
     include_deleted: bool = Query(False),
     repo: LocationRepository = Depends(get_repo),
 ):
+    logger.info(f"[get_location] Fetching location ID: {location_id}")
     doc = await repo.get(location_id, include_deleted=include_deleted)
     if not doc:
+        logger.warning(f"[get_location] Location not found: {location_id}")
         raise HTTPException(status_code=404, detail="Location not found")
     return doc
 
@@ -392,11 +427,14 @@ async def update_location(
     payload: LocationUpdate,
     repo: LocationRepository = Depends(get_repo),
 ):
+    logger.info(f"[update_location] Updating location ID: {location_id}")
     ok = await repo.update(location_id, payload.model_dump(exclude_unset=True))
     if not ok:
+        logger.warning(f"[update_location] Failed to update location ID: {location_id}")
         raise HTTPException(
             status_code=404, detail="Location not found or no fields updated"
         )
+    logger.info(f"[update_location] Successfully updated location ID: {location_id}")
     return {"updated": True}
 
 
@@ -405,7 +443,10 @@ async def delete_location(
     location_id: str,
     repo: LocationRepository = Depends(get_repo),
 ):
+    logger.info(f"[delete_location] Deleting location ID: {location_id}")
     ok = await repo.soft_delete(location_id)
     if not ok:
+        logger.warning(f"[delete_location] Failed to delete location ID: {location_id}")
         raise HTTPException(status_code=404, detail="Location not found")
+    logger.info(f"[delete_location] Successfully deleted location ID: {location_id}")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
