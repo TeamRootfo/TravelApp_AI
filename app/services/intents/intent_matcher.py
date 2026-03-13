@@ -20,19 +20,23 @@ async def get_ranked_nearby_locations_from_intention(
     )
 
     allowed_tags = await repo.get_all_tags()
+    print("allowed_tags: ", allowed_tags)
 
     # 1) Global best match = anchor
     ranked_global = await rank_locations(
         collection=repo.collection,
         intention=intention,
         allowed_tags=allowed_tags,
-        weight_embedding=0.5,
-        weight_tags=0.5,
+        weight_embedding=0.6,
+        weight_tags=0.4,
         top_k=1,
     )
+    print("ranked_global: ", ranked_global)
 
     if not ranked_global:
-        logger.warning("[get_ranked_nearby_locations_from_intention] No global candidates found")
+        logger.warning(
+            "[get_ranked_nearby_locations_from_intention] No global candidates found"
+        )
         return []
 
     anchor = ranked_global[0]
@@ -56,7 +60,9 @@ async def get_ranked_nearby_locations_from_intention(
     )
 
     if not nearby_candidates:
-        logger.info("[get_ranked_nearby_locations_from_intention] No nearby candidates found")
+        logger.info(
+            "[get_ranked_nearby_locations_from_intention] No nearby candidates found"
+        )
         return []
 
     # 3) Rank nearby candidates

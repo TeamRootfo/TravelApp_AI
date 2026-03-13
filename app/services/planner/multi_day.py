@@ -74,6 +74,22 @@ def plan_trip_multi_day(
         end_day_node = route_nodes[-1]
         end_orig_idx = mapping[end_day_node] if end_day_node < len(mapping) else None
 
+        if is_last_day and end_orig_idx is not None:
+            end_loc = all_locations[end_orig_idx]
+            stops.append(
+                {
+                    "order": len(stops),
+                    "original_index": end_orig_idx,
+                    "name": end_loc.get("name"),
+                    "latitude": end_loc.get("latitude"),
+                    "longitude": end_loc.get("longitude"),
+                    "arrival_time_minutes": end_time,
+                    "visit_duration": end_loc.get("visit_duration", 0),
+                    "score": end_loc.get("score", 0),
+                    "travel_to_next_minutes": 0,
+                }
+            )
+
         visited_original = []
         for day_node in res["visited_optional"]:
             visited_original.append(mapping[day_node])

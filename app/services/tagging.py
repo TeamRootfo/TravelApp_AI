@@ -27,7 +27,7 @@ async def suggest_tags_from_description(
 
     llm = ChatOpenAI(
         api_key=settings.OPENAI_API_KEY,
-        model=getattr(settings, "OPENAI_TAG_MODEL", "gpt-4.1-mini"),
+        model=getattr(settings, "OPENAI_TAG_MODEL", "gpt-5.1-mini"),
         temperature=0,
     )
 
@@ -40,7 +40,7 @@ async def suggest_tags_from_description(
                 "You are a strict tag classifier.\n"
                 "Select the most suitable tags that describe the place.\n"
                 "Rules:\n"
-                "- You MUST choose tags ONLY from allowed_tags.\n"
+                "- You MUST choose BEST matching 3 tags ONLY from allowed_tags.\n"
                 "- Do NOT invent new tags.\n"
                 "- If none apply, return an empty list.\n"
                 "{format_instructions}\n",

@@ -52,8 +52,8 @@ async def rank_locations(
     collection,
     intention: str,
     allowed_tags: List[str],
-    weight_embedding: float = 0.8,
-    weight_tags: float = 0.2,
+    weight_embedding: float = 0.4,
+    weight_tags: float = 0.6,
     top_k: int = 10,
     num_candidates: int = 200,
     embedding_path: str = "embedding",
@@ -69,6 +69,7 @@ async def rank_locations(
         description=intention,
         allowed_tags=allowed_tags,
     )
+    print("intent_tags: ", intent_tags)
 
     pipeline: List[Dict[str, Any]] = [
         {
@@ -125,6 +126,7 @@ async def rank_locations(
         )
 
     results.sort(key=lambda x: x["score"], reverse=True)
+    print("sorted results: ", results)
     return results[:top_k]
 
 
