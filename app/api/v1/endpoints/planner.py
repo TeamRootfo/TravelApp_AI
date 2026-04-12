@@ -1,10 +1,11 @@
 import logging
-from fastapi import APIRouter, Depends, Body
-from app.models.planner import PlannerRequest
+from fastapi import APIRouter, Depends, Body, HTTPException
+from app.models.planner import PlannerRequest, ReplacePlaceRequest
 from app.repositories.location_repo import LocationRepository
 from app.deps.database import get_location_collection
 from app.services.planner.multi_day import plan_trip_multi_day
 from app.services.intents.intent_matcher import get_ranked_nearby_locations_from_intention
+from app.services.intents.intent_ranker import rank_candidate_locations
 
 logger = logging.getLogger(__name__)
 
@@ -70,3 +71,48 @@ async def plan_trip(
     except Exception as e:
         logger.error(f"[plan_trip] Error planning trip: {e}")
         return {"error": str(e)}
+
+
+@router.post("/replace-place")
+async def replace_place(
+    payload: ReplacePlaceRequest = Body(...),
+    repo: LocationRepository = Depends(get_repo),
+):
+    logger.info(f"[replace_place] Replacing place {payload.place_to_replace_id}")
+    
+    place_to_replace = await repo.get(payload.place_to_replace_id)
+    if not place_to_replace:
+        raise HTTPException(status_code=404, detail="Place to replace not found")
+        
+    lat = place_to_replace.get("latitude")
+    lon = place_to_replace.get("longitude")
+    
+    if lat is None or lon is None:
+        raise HTTPException(status_code=400, detail="Target place has no coordinates")
+        
+    candidates = await repo.nearby(
+        anchor_id=payload.place_to_replace_id,
+        latitude=lat,
+        longitude=lon,
+        max_distance_m=payload.radius_m,
+        limit=200,
+        include_embeddings=True,
+        exclude_ids=payload.current_plan_places
+    )
+    
+    if not candidates:
+        logger.info("[replace_place] No alternative candidates found nearby.")
+        return []
+        
+    allowed_tags = await repo.get_all_tags()
+    
+    ranked_candidates = await rank_candidate_locations(
+        intention=payload.prompt,
+        allowed_tags=allowed_tags,
+        candidates=candidates,
+        weight_embedding=0.6,
+        weight_tags=0.4,
+        top_k=payload.limit
+    )
+    
+    return ranked_candidates

@@ -6,7 +6,7 @@ pydantic-settings
 python-dotenv
 pip-tools
 openai
-pytest
+pytest-asyncio
 elevenlabs
 langchain-openai
 langchain-openai

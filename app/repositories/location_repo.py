@@ -184,10 +184,19 @@ class LocationRepository:
         max_distance_m: int = 5000,
         limit: int = 200,
         include_deleted: bool = False,
+        include_embeddings: bool = False,
+        exclude_ids: list[str] | None = None,
     ) -> list[dict]:
         logger.info(f"[nearby] Finding nearby locations around: {anchor_id}")
+        
+        excluded_oids = [ObjectId(anchor_id)] if ObjectId.is_valid(anchor_id) else []
+        if exclude_ids:
+            for ex_id in exclude_ids:
+                if ObjectId.is_valid(ex_id):
+                    excluded_oids.append(ObjectId(ex_id))
+                    
         query = {
-            "_id": {"$ne": ObjectId(anchor_id)},
+            "_id": {"$nin": excluded_oids},
             "location": {
                 "$near": {
                     "$geometry": {
@@ -201,7 +210,7 @@ class LocationRepository:
         if not include_deleted:
             query["is_deleted"] = {"$ne": True}
 
-        projection = {"embedding": 0}
+        projection = None if include_embeddings else {"embedding": 0}
         docs = []
         async for d in self.collection.find(query, projection).limit(limit):
             docs.append(self._to_out(d))
